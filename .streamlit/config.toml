@@ -1,0 +1,9 @@
+[theme]
+base="dark" 
+backgroundColor="#171717"
+secondaryBackgroundColor="#1F1F1F"
+textColor="#FAFAFA"
+primaryColor="#4CAF50"
+
+[global]
+showWarningOnDirectExecution = false
