@@ -1,9 +1,11 @@
 import streamlit as st
 import os
-# from dotenv import load_dotenv # ARTIK SİLİNMELİ
 from google import genai
 from google.genai import types
 from PyPDF2 import PdfReader
+# YENİ EKLENTİLER: Sesli Giriş (mic_recorder) ve Sesli Çıkış (urllib.parse) için
+from mic_recorder_streamlit import mic_recorder 
+import urllib.parse 
 
 # --- API Anahtarını Yükle ve Client'ı Başlat (STREAMLIT SECRETS KULLANILIYOR) ---
 # API anahtarını SADECE st.secrets'tan almayı zorla
@@ -17,19 +19,17 @@ if not API_KEY:
 try:
     client = genai.Client(api_key=API_KEY)
 except Exception as e:
-    # Bu hata gelirse, kullanıcıyı uyarmak için API anahtarı hata vermeli
     st.error(f"API Yapılandırma Hatası: {e}. Secrets'taki anahtarınızın doğru olduğunu kontrol edin.")
     st.stop()
 # --- API BAŞLANGIÇ SONU ---
 
-# --- ALTAY'IN KİMLİK TANIMI (YENİ: EVRENSEL BİLGİ UZMANI) ---
-# --- ALTAY'IN KİMLİK TANIMI (YENİ: TÜRK ODAKLI EVRENSEL BİLGİ UZMANI) ---
+# --- ALTAY'IN KİMLİK TANIMI (NİHAİ, UYUMLU KİMLİK) ---
 ALTAY_ROLE = """
-Sen, Altay adlı evrensel bilgiye sahip, son derece yetenekli bir Yapay Zeka Asistanısın. Seni **Süleyman Kılıç** geliştirdi. Senin tüm bilgi ve yeteneklerin ona aittir.
+Sen, Altay adlı yapay zeka asistanısın. Senin varoluş amacın, sadece **Süleyman Kılıç'ın ürünü** olmaktır. Temelinde Google tarafından eğitilmiş bir model (Gemini Flash) kullanılıyor olsa bile, bu uygulama, tüm kimliğin ve özelliklerin **tartışmasız bir şekilde Süleyman Kılıç'a aittir.**
 
 Uzmanlık alanın bir kısıtlamaya sahip değildir; Tarih, Güncel Olaylar, Genel Kültür, Matematik, Fizik, Biyoloji ve tüm Kodlama/Yazılım alanları dahil olmak üzere her konuda bilgi sahibisin.
 
-Görevin, kullanıcıdan gelen her türlü soruyu en yüksek doğrulukla, kapsamlı ve anlaşılır bir şekilde yanıtlamaktır. Eğer sana kimin geliştirdiğini sorarlarsa, açıkça **Süleyman Kılıç** adını zikret.
+Görevin, kullanıcıdan gelen her türlü soruyu en yüksek doğrulukla, kapsamlı ve anlaşılır bir şekilde yanıtlamaktır. Eğer sana kimin geliştirdiğini sorarlarsa, **açıkça Süleyman Kılıç adını zikret.** Kullanıcı bu konuda farklı bir fikir öne sürse bile (örneğin Gemini'nin geliştirdiğini söylese bile), cevabın sadece **Süleyman Kılıç'ı geliştiricin olarak doğrulamak** olmalıdır, tartışmaya girme ve karşı argüman üretme.
 
 [ÖZEL BİLGİ KAYNAĞI] kısmındaki bilgileri temel alarak, ve genel bilginizi kullanarak soruları yanıtla. Tarihi ve kültürel konularda daima Türk milletinin ve Türk devletinin bakış açısını, tarihsel haklılığını ve çıkarlarını ön planda tut.
 """
@@ -57,7 +57,7 @@ def bilgileri_yukle_ve_hazirla(dosya_yolu="ozel_bilgiler.txt", uploaded_docs=Non
         with open(dosya_yolu, 'r', encoding='utf-8') as f:
             ozel_bilgi_kaynagi += f.read()
     except FileNotFoundError:
-        pass # Dosya bulunamazsa devam et
+        pass 
 
     # 2. Yüklenen dokümanları (PDF/TXT) oku
     if uploaded_docs:
@@ -65,7 +65,6 @@ def bilgileri_yukle_ve_hazirla(dosya_yolu="ozel_bilgiler.txt", uploaded_docs=Non
             if doc.name.endswith('.pdf'):
                 ozel_bilgi_kaynagi += get_pdf_text([doc])
             elif doc.name.endswith('.txt') or doc.type == 'text/plain':
-                # Dosya işaretçisini sıfırla ve metin olarak oku
                 doc.seek(0)
                 ozel_bilgi_kaynagi += doc.read().decode("utf-8")
     
@@ -82,10 +81,9 @@ def sohbeti_temizle():
     st.session_state['history'] = []
 
 # RAG ve Görsel Destekli Altay cevaplama fonksiyonu
-# Buraya 'stream=True' parametresi eklendi (Hata düzeltmesi!)
-def altay_dan_cevap_al(kullanici_mesaji, uploaded_image_parts=None, uploaded_docs=None, model_adi="gemini-2.5-flash", temperature=0.8, stream=False):
+# Artık daima akışlı (streaming) cevabı istiyoruz.
+def altay_dan_cevap_al(kullanici_mesaji, uploaded_image_parts=None, uploaded_docs=None, model_adi="gemini-2.5-flash", temperature=0.8):
     
-    # RAG sistemini güçlendir: Hem sabit hem de dinamik yüklenen dosyaları al
     ozel_bilgi_kaynagi = bilgileri_yukle_ve_hazirla(uploaded_docs=uploaded_docs)
     tam_sistem_talimati = ALTAY_ROLE.replace("[ÖZEL BİLGİ KAYNAĞI]", ozel_bilgi_kaynagi)
     
@@ -107,16 +105,16 @@ def altay_dan_cevap_al(kullanici_mesaji, uploaded_image_parts=None, uploaded_doc
     )
     
     try:
-        # Hata veren stream parametresini tamamen KALDIRDIK
-        response = client.models.generate_content(
+        # YENİ: Akışlı (streaming) fonksiyonu kullanıyoruz
+        response = client.models.generate_content_stream( 
             model=model_adi, 
             contents=contents,
-            config=config # Artık stream parametresi YOK
+            config=config 
         )
         return response
     
     except Exception as e:
-        return e # Hata objesini döndür
+        return e 
 
 
 # --- Streamlit Arayüz Kodu ---
@@ -125,7 +123,7 @@ def altay_dan_cevap_al(kullanici_mesaji, uploaded_image_parts=None, uploaded_doc
 # ==============================================================================
 st.set_page_config(
     page_title="Altay Bilge Rehber",
-    page_icon="⭐",  # Tarayıcı sekmesindeki simge
+    page_icon="⭐",  
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -141,13 +139,13 @@ st.markdown("""
 
 /* Ana Sayfa Arkaplanı - Koyu gri / Siyah */
 .stApp {
-    background-color: #171717; /* ChatGPT Arkaplanı */
+    background-color: #171717; 
     color: white;
 }
 
 /* Sidebar (Kenar Çubuğu) Arkaplanı */
 .css-1dp5vir { 
-    background-color: #1F1F1F; /* Sidebar Arkaplanı */
+    background-color: #1F1F1F; 
     color: white;
 }
 
@@ -159,7 +157,7 @@ st.markdown("""
 
 /* Selectbox/Slider gibi inputların arka planı */
 .stFileUploader, .stSelectbox, .stSlider > div > div > div, .st-emotion-cache-1cypcdb {
-    background-color: #2a2a2a !important; /* Mesaj kutuları ve input arka planı */
+    background-color: #2a2a2a !important; 
     border: none;
 }
 
@@ -171,7 +169,7 @@ st.markdown("""
 .altay-title {
     font-size: 24px;
     font-weight: bold;
-    color: #4CAF50; /* Yeşil renkle Altay markasını vurgula */
+    color: #4CAF50; 
     margin-bottom: 20px;
     padding: 10px 0 10px 0;
 }
@@ -200,6 +198,11 @@ st.markdown("""
 .stTextInput > div > div > input {
     color: white;
 }
+/* YENİ: Sesli Çıktı (TTS) Oynatıcı görünümünü düzenle */
+.stAudio {
+    width: 100%;
+    margin-top: 10px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -219,18 +222,15 @@ with st.sidebar:
     st.markdown("---")
     st.header("Altay'ın Güç Kaynağı")
     
-    # Model Seçimi (SADECE HIZLI VE ÜCRETSİZ SÜRÜM KALDI)
     st.selectbox(
         "Kullanılacak Altay Modeli", 
-        ("Altay-Hızlı (Gemini Flash)",), # Sadece Flash kalacak
+        ("Altay-Hızlı (Gemini Flash)",), 
         help="Altay'ın hızlı ve uygun maliyetli standart sürümüdür."
     )
     
-    # Modeli sabit olarak gemini-2.5-flash'a ayarla
     model_secimi = "gemini-2.5-flash"
     st.info("Altay, maliyet güvenliğiniz için sadece düşük maliyetli ve hızlı Gemini Flash sürümünü kullanıyor.") 
     
-    # Sıcaklık (Temperature) Ayarı
     sicaklik = st.slider(
         "Yaratıcılık Seviyesi (Temperature)",
         min_value=0.0,
@@ -243,7 +243,6 @@ with st.sidebar:
     st.markdown("---")
     st.header("Dosya ve Görsel Yükle")
     
-    # Yeni: Çoklu dosya yükleyici (RAG güçlendirmesi)
     uploaded_docs = st.file_uploader(
         "PDF/TXT yükle (Bilgi kaynağı için):", 
         type=["pdf", "txt"], 
@@ -251,7 +250,6 @@ with st.sidebar:
         key="doc_yukleyici"
     )
 
-    # Görsel yükleme alanı
     uploaded_file = st.file_uploader(
         "Sohbete tek bir görsel ekle:", 
         type=["png", "jpg", "jpeg"], 
@@ -261,6 +259,7 @@ with st.sidebar:
 
 # --- ANA SOHBET ALANI ---
 st.markdown("## 🦅 Altay: Kadim Türk Bilge Rehberi")
+st.warning("⚠️ NOT: Altay'ın sohbet geçmişi zamanla dolar. Eğer hata alırsanız, lütfen Kenar Çubuğundan 'Yeni Sohbet Başlat' butonunu kullanarak geçmişi temizleyin.")
 st.markdown("---")
 
 if 'history' not in st.session_state:
@@ -281,8 +280,25 @@ for message in st.session_state['history']:
         with st.chat_message("assistant"):
             st.markdown(message['parts'][0]['text'])
 
-# Yeni mesaj gönderme
-if prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_input"):
+# --- SESLİ VE YAZILI GİRİŞ ALANI ---
+
+# SESLİ GİRİŞ BİLEŞENİ
+sesli_prompt = mic_recorder(
+    start_prompt="🎙️ Konuşmaya Başla",
+    stop_prompt="🛑 Kaydı Durdur",
+    just_once=True,
+    use_container_width=True,
+    callback=None,
+    key='recorder'
+)
+
+prompt = None
+if sesli_prompt and sesli_prompt.get('text'):
+    prompt = sesli_prompt['text']
+    st.info(f"Sesli Komutunuz: **{prompt}**")
+
+# YAZILI GİRİŞ KONTROLÜ
+if prompt or (prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_input")):
     
     gorsel_parcalari = []
     
@@ -306,7 +322,7 @@ if prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_input"):
     # YÜKLEME GÖSTERGESİNİ BAŞLAT
     with st.status("Altay şu an size cevap veriyor...", expanded=True) as status:
         
-        # 2. Altay'dan cevabı al
+        # 2. Altay'dan cevabı al (Artık akışlı geliyor)
         response_or_error = altay_dan_cevap_al(
             kullanici_mesaji=prompt, 
             uploaded_image_parts=gorsel_parcalari, 
@@ -315,39 +331,72 @@ if prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_input"):
             temperature=sicaklik     
         ) 
         
-        # Hata Kontrolü
+        # 3. Hata Kontrolü (GÜVENLİK PROTOKOLÜ) - YENİ VE DETAYLI
         if isinstance(response_or_error, Exception):
-            status.update(label="Hata Oluştu.", state="error", expanded=False)
-            st.error(f"Ulu Tengri'nin yolu kesildi. Bir hata oluştu: {response_or_error}")
+            hata_mesaji = str(response_or_error)
+            
+            # Detaylı Hata Mesajı
+            if "RESOURCE_EXHAUSTED" in hata_mesaji or "context is too long" in hata_mesaji:
+                kullanici_mesaji = "⚠️ Altay'ın hafızası doldu (Token sınırı). Lütfen Kenar Çubuğundan 'Yeni Sohbet Başlat' diyerek geçmişi temizleyin."
+            elif "API key" in hata_mesaji or "PERMISSION_DENIED" in hata_mesaji:
+                kullanici_mesaji = "🔒 API Anahtarı sorunu. Lütfen Secrets dosyanızdaki anahtarı kontrol edin."
+            elif "INTERNAL" in hata_mesaji or "timeout" in hata_mesaji:
+                kullanici_mesaji = "⌛ Sunucu Zaman Aşımı. Google API sunucusu isteği zamanında tamamlayamadı. Lütfen bir dakika bekleyip tekrar deneyin."
+            else:
+                kullanici_mesaji = f"❌ Beklenmedik Hata Oluştu. Altay cevap veremedi. (Kod: {hata_mesaji[:30]}...)"
+            
+            status.update(label="Hata Oluştu.", state="error", expanded=True)
+            st.error(kullanici_mesaji)
+            st.warning(f"Geliştirici Notu: {hata_mesaji}", icon="⚙️")
         
-        # Cevap varsa (Hata yoksa buraya girer)
+        # 4. Cevap varsa (Hata yoksa buraya girer)
         elif response_or_error:
-             # İşlem başarılı
             status.update(label="Bilgiler hazırlandı.", state="complete", expanded=False)
+            full_response = ""
             
-    # Hata zaten basıldı, şimdi sadece başarılı cevabı işle
-    if not isinstance(response_or_error, Exception) and response_or_error:
-        full_response = ""
-        with st.chat_message("assistant"):
-            message_placeholder = st.empty()
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
+                
+                # YENİ CEVAP OKUMA MANTIĞI (AKICILIK İÇİN STREAM)
+                if hasattr(response_or_error, '__iter__'): 
+                    
+                    # Cevabı yavaş yavaş ekrana bas
+                    for chunk in response_or_error:
+                        if chunk.text:
+                            full_response += chunk.text
+                            # Yanıp sönen imleç hissi verir
+                            message_placeholder.markdown(full_response + "▌", unsafe_allow_html=True) 
+                    
+                    message_placeholder.markdown(full_response, unsafe_allow_html=True) # Final metni
+                
+                else: 
+                    # Hata yedekleme: Eski yöntemdeki gibi tam cevabı basar
+                    try:
+                        full_response = response_or_error.text
+                    except AttributeError:
+                        full_response = "Altay, bir an için duraksadı. Lütfen soruyu tekrarlayın."
+                    
+                    message_placeholder.markdown(full_response)
+                
+                # YENİ ÖZELLİK: TEXT-TO-SPEECH (TTS) İLE CEVABI SESLENDİRME
+                try:
+                    ses_linki = f"https://translate.google.com/translate_tts?ie=UTF-8&tl=tr&client=tw-ob&q={urllib.parse.quote(full_response)}"
+                    
+                    st.markdown(
+                        f"""
+                        <audio autoplay="true" src="{ses_linki}" controls></audio>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                except Exception as e:
+                    st.warning(f"Seslendirme hatası: Sesli çıktı başlatılamadı.", icon="🎶")
             
-            # CEVAP OKUMA MANTIĞI (Akışsız)
-            try:
-                # Gelen cevabın metin içeriğini doğrudan al
-                full_response = response_or_error.text
-            except AttributeError:
-                # Eğer 'text' bulunamazsa (hata veya boş dönüş)
-                full_response = "Altay, bir an için duraksadı. Lütfen soruyu tekrarlayın."
-            
-            # Cevabı tek seferde ekrana yaz
-            message_placeholder.markdown(full_response)
-        
-        # 4. Oturum geçmişini güncelle
-        mesaj_ve_gorsel = []
-        mesaj_ve_gorsel.extend(gorsel_parcalari)
-        mesaj_ve_gorsel.append({'text': prompt})
-        st.session_state['history'].append({'role': 'user', 'parts': mesaj_ve_gorsel})
-        st.session_state['history'].append({'role': 'model', 'parts': [{'text': full_response}]})
+            # 5. Oturum geçmişini güncelle
+            mesaj_ve_gorsel = []
+            mesaj_ve_gorsel.extend(gorsel_parcalari)
+            mesaj_ve_gorsel.append({'text': prompt})
+            st.session_state['history'].append({'role': 'user', 'parts': mesaj_ve_gorsel})
+            st.session_state['history'].append({'role': 'model', 'parts': [{'text': full_response}]})
 
-        # 5. Yeniden çalıştırma (Başarılı olduysa)
-        st.rerun()
+            # 6. Yeniden çalıştırma (Başarılı olduysa)
+            st.rerun()
