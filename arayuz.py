@@ -1,12 +1,11 @@
-
 import streamlit as st
 import os
 from google import genai
 from google.genai import types
 from PyPDF2 import PdfReader
-# YENİ EKLENTİ: Basit Sesli Giriş (mic_recorder) ve Sesli Çıkış (urllib.parse)
-from streamlit_mic_recorder import mic_recorder 
+# YENİ EKLENTİ: Sadece Sesli Çıkış (urllib.parse) bırakıldı.
 import urllib.parse 
+# Sesli giriş (mic_recorder, webrtc) kütüphaneleri KALDIRILDI.
 
 # --- API Anahtarını Yükle ve Client'ı Başlat (STREAMLIT SECRETS KULLANILIYOR) ---
 API_KEY = st.secrets.get("GEMINI_API_KEY")
@@ -279,25 +278,8 @@ for message in st.session_state['history']:
         with st.chat_message("assistant"):
             st.markdown(message['parts'][0]['text'])
 
-# --- SESLİ VE YAZILI GİRİŞ ALANI ---
-
-# SESLİ GİRİŞ BİLEŞENİ
-sesli_prompt = mic_recorder(
-    start_prompt="🎙️ Konuşmaya Başla",
-    stop_prompt="🛑 Kaydı Durdur",
-    just_once=True,
-    use_container_width=True,
-    callback=None,
-    key='recorder'
-)
-
-prompt = None
-if sesli_prompt and sesli_prompt.get('text'):
-    prompt = sesli_prompt['text']
-    st.info(f"Sesli Komutunuz: **{prompt}**")
-
-# YAZILI GİRİŞ KONTROLÜ
-if prompt or (prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_input")):
+# --- YAZILI GİRİŞ KONTROLÜ (SADECE BU KALDI) ---
+if prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_input"):
     
     gorsel_parcalari = []
     
