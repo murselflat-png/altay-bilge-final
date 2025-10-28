@@ -1,3 +1,3 @@
 streamlit
-google-genai
-pypdf2
+google-genai==0.11.0 # EN SON ÇALIŞAN SÜRÜMÜ BURAYA ZORLA GİRİYORUZ
+PyPDF2
