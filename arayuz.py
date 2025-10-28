@@ -3,12 +3,10 @@ import os
 from google import genai
 from google.genai import types
 from PyPDF2 import PdfReader
-# YENİ EKLENTİLER: Sesli Giriş (mic_recorder) ve Sesli Çıkış (urllib.parse) için
-from mic_recorder_streamlit import mic_recorder 
+# TEMİZLENDİ: mic_recorder_streamlit İSİMLİ KÜTÜPHANE KALDIRILDI
 import urllib.parse 
 
 # --- API Anahtarını Yükle ve Client'ı Başlat (STREAMLIT SECRETS KULLANILIYOR) ---
-# API anahtarını SADECE st.secrets'tan almayı zorla
 API_KEY = st.secrets.get("GEMINI_API_KEY")
 
 if not API_KEY:
@@ -43,7 +41,6 @@ def get_pdf_text(pdf_docs):
             for page in pdf_reader.pages:
                 text += page.extract_text()
         except Exception as e:
-            # Okunamayan dosyalar için sessiz hata
             print(f"PDF okuma hatası: {e}")
             pass
     return text
@@ -68,11 +65,9 @@ def bilgileri_yukle_ve_hazirla(dosya_yolu="ozel_bilgiler.txt", uploaded_docs=Non
                 doc.seek(0)
                 ozel_bilgi_kaynagi += doc.read().decode("utf-8")
     
-    # Eğer hiç bilgi toplanamadıysa, boş dön
     if not ozel_bilgi_kaynagi.strip():
         return ""
 
-    # Toplanan tüm bilgiyi tek bir blok olarak döndür
     return "\n--- ÖZEL BİLGİ KAYNAĞI BAŞLANGIÇ ---\n" + ozel_bilgi_kaynagi + "\n--- ÖZEL BİLGİ KAYNAĞI SON ---\n"
 
 
@@ -81,7 +76,6 @@ def sohbeti_temizle():
     st.session_state['history'] = []
 
 # RAG ve Görsel Destekli Altay cevaplama fonksiyonu
-# Artık daima akışlı (streaming) cevabı istiyoruz.
 def altay_dan_cevap_al(kullanici_mesaji, uploaded_image_parts=None, uploaded_docs=None, model_adi="gemini-2.5-flash", temperature=0.8):
     
     ozel_bilgi_kaynagi = bilgileri_yukle_ve_hazirla(uploaded_docs=uploaded_docs)
@@ -105,7 +99,7 @@ def altay_dan_cevap_al(kullanici_mesaji, uploaded_image_parts=None, uploaded_doc
     )
     
     try:
-        # YENİ: Akışlı (streaming) fonksiyonu kullanıyoruz
+        # Akışlı (streaming) fonksiyonu kullanıyoruz
         response = client.models.generate_content_stream( 
             model=model_adi, 
             contents=contents,
@@ -198,7 +192,7 @@ st.markdown("""
 .stTextInput > div > div > input {
     color: white;
 }
-/* YENİ: Sesli Çıktı (TTS) Oynatıcı görünümünü düzenle */
+/* Sesli Çıktı (TTS) Oynatıcı görünümünü düzenle */
 .stAudio {
     width: 100%;
     margin-top: 10px;
@@ -280,25 +274,8 @@ for message in st.session_state['history']:
         with st.chat_message("assistant"):
             st.markdown(message['parts'][0]['text'])
 
-# --- SESLİ VE YAZILI GİRİŞ ALANI ---
-
-# SESLİ GİRİŞ BİLEŞENİ
-sesli_prompt = mic_recorder(
-    start_prompt="🎙️ Konuşmaya Başla",
-    stop_prompt="🛑 Kaydı Durdur",
-    just_once=True,
-    use_container_width=True,
-    callback=None,
-    key='recorder'
-)
-
-prompt = None
-if sesli_prompt and sesli_prompt.get('text'):
-    prompt = sesli_prompt['text']
-    st.info(f"Sesli Komutunuz: **{prompt}**")
-
-# YAZILI GİRİŞ KONTROLÜ
-if prompt or (prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_input")):
+# --- YAZILI GİRİŞ KONTROLÜ ---
+if prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_input"):
     
     gorsel_parcalari = []
     
@@ -322,7 +299,7 @@ if prompt or (prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_
     # YÜKLEME GÖSTERGESİNİ BAŞLAT
     with st.status("Altay şu an size cevap veriyor...", expanded=True) as status:
         
-        # 2. Altay'dan cevabı al (Artık akışlı geliyor)
+        # 2. Altay'dan cevabı al (Akışlı)
         response_or_error = altay_dan_cevap_al(
             kullanici_mesaji=prompt, 
             uploaded_image_parts=gorsel_parcalari, 
@@ -331,7 +308,7 @@ if prompt or (prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_
             temperature=sicaklik     
         ) 
         
-        # 3. Hata Kontrolü (GÜVENLİK PROTOKOLÜ) - YENİ VE DETAYLI
+        # 3. Hata Kontrolü (GÜVENLİK PROTOKOLÜ) - DETAYLI
         if isinstance(response_or_error, Exception):
             hata_mesaji = str(response_or_error)
             
@@ -357,20 +334,17 @@ if prompt or (prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
                 
-                # YENİ CEVAP OKUMA MANTIĞI (AKICILIK İÇİN STREAM)
+                # CEVAP OKUMA MANTIĞI (AKICILIK İÇİN STREAM)
                 if hasattr(response_or_error, '__iter__'): 
                     
-                    # Cevabı yavaş yavaş ekrana bas
                     for chunk in response_or_error:
                         if chunk.text:
                             full_response += chunk.text
-                            # Yanıp sönen imleç hissi verir
                             message_placeholder.markdown(full_response + "▌", unsafe_allow_html=True) 
                     
                     message_placeholder.markdown(full_response, unsafe_allow_html=True) # Final metni
                 
                 else: 
-                    # Hata yedekleme: Eski yöntemdeki gibi tam cevabı basar
                     try:
                         full_response = response_or_error.text
                     except AttributeError:
@@ -378,7 +352,7 @@ if prompt or (prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_
                     
                     message_placeholder.markdown(full_response)
                 
-                # YENİ ÖZELLİK: TEXT-TO-SPEECH (TTS) İLE CEVABI SESLENDİRME
+                # TEXT-TO-SPEECH (TTS) İLE CEVABI SESLENDİRME
                 try:
                     ses_linki = f"https://translate.google.com/translate_tts?ie=UTF-8&tl=tr&client=tw-ob&q={urllib.parse.quote(full_response)}"
                     
