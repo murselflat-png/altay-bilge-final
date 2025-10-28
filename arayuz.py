@@ -5,26 +5,22 @@ from google import genai
 from google.genai import types
 from PyPDF2 import PdfReader
 
-# --- API Anahtarını Yükle ve Client'ı Başlat (st.secrets kullanılarak) ---
-# API anahtarını Streamlit Sırlarından al
+# --- API Anahtarını Yükle ve Client'ı Başlat (SADECE GİRİŞ KUTUSUNDAN ALIYOR) ---
+# API anahtarını SADECE kenar çubuğundan almayı zorla
 API_KEY = None
-try:
-    # 1. Streamlit Secrets'den anahtarı almayı dener (EN GÜVENİLİR YÖNTEM).
-    API_KEY = st.secrets["GEMINI_API_KEY"]
-except KeyError:
-    # 2. Eğer Secrets'de yoksa, kullanıcıdan girmesini ister (yedek)
-    st.sidebar.markdown("## API Anahtarınızı Girin")
-    st.info("Lütfen Streamlit Secrets'a anahtarınızı ekleyin VEYA sol kenar çubuğuna giriniz.")
-    API_KEY = st.sidebar.text_input("Gemini API Anahtarı:", type="password", key="sidebar_api_input")
+
+st.sidebar.markdown("## API Anahtarınızı Girin")
+st.info("Lütfen Gemini API Anahtarınızı (AIza...) sol kenar çubuğuna giriniz.")
+API_KEY = st.sidebar.text_input("Gemini API Anahtarı:", type="password", key="sidebar_api_input")
 
 if not API_KEY:
     st.stop()
     
-# Client'ı başlat
+# Client'ı başlat: SADECE API anahtarı ile başlatmayı zorla
 try:
     client = genai.Client(api_key=API_KEY)
 except Exception as e:
-    st.error(f"API Yapılandırma Hatası: {e}. Anahtarınızın doğru olduğunu kontrol edin.")
+    st.error(f"API Yapılandırma Hatası: Anahtarınızın doğru olduğunu kontrol edin.")
     st.stop()
 # --- API BAŞLANGIÇ SONU ---
 
