@@ -308,7 +308,12 @@ if prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_input"):
         temperature=sicaklik     
     ) 
     
-   # Hata Kontrolü (Hata yoksa buraya girer)
+   # Hata Kontrolü
+    if isinstance(response_or_error, Exception):
+        # Hata mesajı ekranda kalacak!
+        st.error(f"Ulu Tengri'nin yolu kesildi. Bir hata oluştu: {response_or_error}")
+    
+    # Cevap varsa (Hata yoksa buraya girer)
     elif response_or_error:
         full_response = ""
         with st.chat_message("assistant"):
