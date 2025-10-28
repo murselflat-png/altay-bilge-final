@@ -1,4 +1,5 @@
 streamlit
 google-genai 
 PyPDF2
-# streamlit-mic-recorder kaldırıldı
+streamlit-webrtc    # YENİ SES GİRİŞİ İÇİN
+aiortc              # YENİ SES GİRİŞİ İÇİN
