@@ -8,6 +8,7 @@ import urllib.parse
 # Sesli giriş (mic_recorder, webrtc) kütüphaneleri KALDIRILDI.
 
 # --- API Anahtarını Yükle ve Client'ı Başlat (STREAMLIT SECRETS KULLANILIYOR) ---
+# DİKKAT: API Anahtarını Streamlit Secrets'a eklediğinizden emin olun!
 API_KEY = st.secrets.get("GEMINI_API_KEY")
 
 if not API_KEY:
@@ -359,13 +360,13 @@ if prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_input"):
                     
                     message_placeholder.markdown(full_response)
                 
-                # YENİ ÖZELLİK: TEXT-TO-SPEECH (TTS) İLE CEVABI SESLENDİRME
+                # NİHAİ TTS ÇÖZÜMÜ: Otomatik oynatmayı kaldır, manuel kontrolü bırak.
                 try:
                     ses_linki = f"https://translate.google.com/translate_tts?ie=UTF-8&tl=tr&client=tw-ob&q={urllib.parse.quote(full_response)}"
                     
                     st.markdown(
                         f"""
-                        <audio autoplay="true" src="{ses_linki}" controls></audio>
+                        <audio controls src="{ses_linki}"></audio>
                         """,
                         unsafe_allow_html=True
                     )
