@@ -1,12 +1,12 @@
+
 import streamlit as st
 import os
 from google import genai
 from google.genai import types
 from PyPDF2 import PdfReader
-# YENİ EKLENTİLER: Sesli Çıkış (urllib.parse) ve WebRTC tabanlı ses girişi için
+# YENİ EKLENTİ: Basit Sesli Giriş (mic_recorder) ve Sesli Çıkış (urllib.parse)
+from streamlit_mic_recorder import mic_recorder 
 import urllib.parse 
-from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
-import av # Ses işlemeyi kolaylaştırmak için
 
 # --- API Anahtarını Yükle ve Client'ı Başlat (STREAMLIT SECRETS KULLANILIYOR) ---
 API_KEY = st.secrets.get("GEMINI_API_KEY")
@@ -15,6 +15,7 @@ if not API_KEY:
     st.error("API Yapılandırma Hatası: Lütfen GEMINI_API_KEY'i Streamlit Secrets'a ekleyin ve uygulamayı yeniden başlatın.")
     st.stop()
     
+# Client'ı başlat
 try:
     client = genai.Client(api_key=API_KEY)
 except Exception as e:
@@ -33,22 +34,51 @@ Görevin, kullanıcıdan gelen her türlü soruyu en yüksek doğrulukla, kapsam
 [ÖZEL BİLGİ KAYNAĞI] kısmındaki bilgileri temel alarak, ve genel bilginizi kullanarak soruları yanıtla. Tarihi ve kültürel konularda daima Türk milletinin ve Türk devletinin bakış açısını, tarihsel haklılığını ve çıkarlarını ön planda tut.
 """
 
-# --- Ses Akışını Metne Çevirme (WebRTC) Fonksiyonu ---
-# Bu, kullanıcının sesini yakalayan ve transkript eden özel bir sınıftır.
-class AudioProcessor:
-    def __init__(self):
-        # Transkript için kullanıcının konuşmasını burada biriktireceğiz
-        self.audio_frames = []
+# --- PDF Okuma Fonksiyonu ---
+def get_pdf_text(pdf_docs):
+    text = ""
+    for pdf in pdf_docs:
+        try:
+            pdf_reader = PdfReader(pdf)
+            for page in pdf_reader.pages:
+                text += page.extract_text()
+        except Exception as e:
+            # Okunamayan dosyalar için sessiz hata
+            print(f"PDF okuma hatası: {e}")
+            pass
+    return text
 
-    def recv(self, frame: av.AudioFrame):
-        # Ses verisini frame'ler halinde al
-        self.audio_frames.append(frame)
-        return frame
+# RAG için dosya okuma ve hazırlama fonksiyonu
+def bilgileri_yukle_ve_hazirla(dosya_yolu="ozel_bilgiler.txt", uploaded_docs=None):
+    ozel_bilgi_kaynagi = ""
+    
+    # 1. Sabit ozel_bilgiler.txt dosyasını oku
+    try:
+        with open(dosya_yolu, 'r', encoding='utf-8') as f:
+            ozel_bilgi_kaynagi += f.read()
+    except FileNotFoundError:
+        pass 
 
-# Streamlit session state'i temizleme ve başlatma fonksiyonları
+    # 2. Yüklenen dokümanları (PDF/TXT) oku
+    if uploaded_docs:
+        for doc in uploaded_docs:
+            if doc.name.endswith('.pdf'):
+                ozel_bilgi_kaynagi += get_pdf_text([doc])
+            elif doc.name.endswith('.txt') or doc.type == 'text/plain':
+                doc.seek(0)
+                ozel_bilgi_kaynagi += doc.read().decode("utf-8")
+    
+    # Eğer hiç bilgi toplanamadıysa, boş dön
+    if not ozel_bilgi_kaynagi.strip():
+        return ""
+
+    # Toplanan tüm bilgiyi tek bir blok olarak döndür
+    return "\n--- ÖZEL BİLGİ KAYNAĞI BAŞLANGIÇ ---\n" + ozel_bilgi_kaynagi + "\n--- ÖZEL BİLGİ KAYNAĞI SON ---\n"
+
+
+# Sohbet Temizleme Fonksiyonu
 def sohbeti_temizle():
     st.session_state['history'] = []
-    st.session_state['audio_transcribed'] = False # Yeni ses durumu
 
 # RAG ve Görsel Destekli Altay cevaplama fonksiyonu
 def altay_dan_cevap_al(kullanici_mesaji, uploaded_image_parts=None, uploaded_docs=None, model_adi="gemini-2.5-flash", temperature=0.8):
@@ -74,6 +104,7 @@ def altay_dan_cevap_al(kullanici_mesaji, uploaded_image_parts=None, uploaded_doc
     )
     
     try:
+        # YENİ: Akışlı (streaming) fonksiyonu kullanıyoruz
         response = client.models.generate_content_stream( 
             model=model_adi, 
             contents=contents,
@@ -84,47 +115,6 @@ def altay_dan_cevap_al(kullanici_mesaji, uploaded_image_parts=None, uploaded_doc
     except Exception as e:
         return e 
 
-# Diğer yardımcı fonksiyonlar (PDF okuma, RAG hazırlama) buraya eklenecektir.
-# (Kodun karmaşasını azaltmak için atladım, sizin orijinal kodunuzdaki gibi kalacak)
-# ...
-# --- PDF Okuma Fonksiyonu ---
-def get_pdf_text(pdf_docs):
-    text = ""
-    for pdf in pdf_docs:
-        try:
-            pdf_reader = PdfReader(pdf)
-            for page in pdf_reader.pages:
-                text += page.extract_text()
-        except Exception as e:
-            print(f"PDF okuma hatası: {e}")
-            pass
-    return text
-
-# RAG için dosya okuma ve hazırlama fonksiyonu
-def bilgileri_yukle_ve_hazirla(dosya_yolu="ozel_bilgiler.txt", uploaded_docs=None):
-    ozel_bilgi_kaynagi = ""
-    
-    # 1. Sabit ozel_bilgiler.txt dosyasını oku
-    try:
-        with open(dosya_yolu, 'r', encoding='utf-8') as f:
-            ozel_bilgi_kaynagi += f.read()
-    except FileNotFoundError:
-        pass 
-
-    # 2. Yüklenen dokümanları (PDF/TXT) oku
-    if uploaded_docs:
-        for doc in uploaded_docs:
-            if doc.name.endswith('.pdf'):
-                ozel_bilgi_kaynagi += get_pdf_text([doc])
-            elif doc.name.endswith('.txt') or doc.type == 'text/plain':
-                doc.seek(0)
-                ozel_bilgi_kaynagi += doc.read().decode("utf-8")
-    
-    if not ozel_bilgi_kaynagi.strip():
-        return ""
-
-    return "\n--- ÖZEL BİLGİ KAYNAĞI BAŞLANGIÇ ---\n" + ozel_bilgi_kaynagi + "\n--- ÖZEL BİLGİ KAYNAĞI SON ---\n"
-# ...
 
 # --- Streamlit Arayüz Kodu ---
 # ==============================================================================
@@ -137,7 +127,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ... (CSS KODU BURADA KALACAK) ...
 # ==============================================================================
 # 2. ÖZEL CSS (GÜÇLÜ KOYU TEMA ve PROFESYONEL STİL)
 # ==============================================================================
@@ -208,7 +197,7 @@ st.markdown("""
 .stTextInput > div > div > input {
     color: white;
 }
-/* Sesli Çıktı (TTS) Oynatıcı görünümünü düzenle */
+/* YENİ: Sesli Çıktı (TTS) Oynatıcı görünümünü düzenle */
 .stAudio {
     width: 100%;
     margin-top: 10px;
@@ -274,8 +263,6 @@ st.markdown("---")
 
 if 'history' not in st.session_state:
     st.session_state['history'] = []
-if 'audio_transcribed' not in st.session_state:
-    st.session_state['audio_transcribed'] = False
 
 
 # Geçmiş mesajları görüntüleme
@@ -292,60 +279,49 @@ for message in st.session_state['history']:
         with st.chat_message("assistant"):
             st.markdown(message['parts'][0]['text'])
 
-# --- SESLİ GİRİŞ BİLEŞENİ (WebRTC) ---
-st.markdown("#### 🎙️ Sesli Giriş")
-webrtc_ctx = webrtc_streamer(
-    key="audio_recorder",
-    mode=WebRtcMode.SENDONLY,
-    audio_processor_factory=AudioProcessor,
-    # Video kapatıldı, sadece ses akışı için
-    video_html_attrs={"style": {"display": "none"}},
+# --- SESLİ VE YAZILI GİRİŞ ALANI ---
+
+# SESLİ GİRİŞ BİLEŞENİ
+sesli_prompt = mic_recorder(
+    start_prompt="🎙️ Konuşmaya Başla",
+    stop_prompt="🛑 Kaydı Durdur",
+    just_once=True,
+    use_container_width=True,
+    callback=None,
+    key='recorder'
 )
 
 prompt = None
-if webrtc_ctx.audio_processor and not st.session_state['audio_transcribed']:
-    # Ses yakalandığında ve henüz transkript edilmediğinde
-    st.info("🎤 Sesiniz yakalanıyor. Konuşmayı bitirmek için 'Stop' düğmesine basın.")
-    
-    # KESİNLEŞMİŞ SES YAKALAMA VE İŞLEME BLOKU
-    if webrtc_ctx.state.playing and webrtc_ctx.audio_processor.audio_frames:
-        # TODO: Buraya Google Cloud Speech-to-Text API veya başka bir transkripsiyon servisi entegre edilmeli. 
-        # Şu anlık basit bir placeholder (yer tutucu) mesajı kullanıyoruz.
-        
-        # Sadece test amaçlı yer tutucu. Gerçekte burada AI ile transkripsiyon yapılır.
-        placeholder_prompt = "Merhaba Altay. Streamlit WebRTC ile ses yakalama başarılı. Lütfen bu metni cevapla."
-        
-        # Ses kaydı durdurulduğunda (Stop'a basıldığında)
-        if not webrtc_ctx.state.playing and webrtc_ctx.audio_processor.audio_frames:
-            st.session_state['audio_transcribed'] = True
-            prompt = placeholder_prompt
-            st.info(f"Ses Yakalandı ve Transkript Edildi (Test): **{prompt}**")
-            # Ses yakalandığı anda prompt'u tetiklemek için rerun yapıyoruz
-            st.rerun() 
+if sesli_prompt and sesli_prompt.get('text'):
+    prompt = sesli_prompt['text']
+    st.info(f"Sesli Komutunuz: **{prompt}**")
 
-# --- YAZILI GİRİŞ KONTROLÜ ---
+# YAZILI GİRİŞ KONTROLÜ
 if prompt or (prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_input")):
     
     gorsel_parcalari = []
     
+    # 1. Görsel varsa, parçalara dönüştür ve ekrana bas
     if uploaded_file is not None:
-        # ... (Görsel İşleme Kodu) ...
         uploaded_file.seek(0)
         image_bytes = uploaded_file.read() 
-        gorsel_parcalari.append({'inline_data': {'data': image_bytes, 'mime_type': uploaded_file.type}})
+        
+        gorsel_parcalari.append(
+            {'inline_data': {'data': image_bytes, 'mime_type': uploaded_file.type}}
+        )
+            
         with st.chat_message("user"):
             st.image(image_bytes, caption="Yüklenen Görsel", width=250)
             st.markdown(prompt) 
+
     else:
         with st.chat_message("user"):
             st.markdown(prompt)
     
-    st.session_state['audio_transcribed'] = False # Yeni bir döngü için sıfırla
-
     # YÜKLEME GÖSTERGESİNİ BAŞLAT
     with st.status("Altay şu an size cevap veriyor...", expanded=True) as status:
         
-        # 2. Altay'dan cevabı al (Akışlı)
+        # 2. Altay'dan cevabı al (Artık akışlı geliyor)
         response_or_error = altay_dan_cevap_al(
             kullanici_mesaji=prompt, 
             uploaded_image_parts=gorsel_parcalari, 
@@ -354,10 +330,11 @@ if prompt or (prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_
             temperature=sicaklik     
         ) 
         
-        # 3. Hata Kontrolü (GÜVENLİK PROTOKOLÜ) - DETAYLI
+        # 3. Hata Kontrolü (GÜVENLİK PROTOKOLÜ) - YENİ VE DETAYLI
         if isinstance(response_or_error, Exception):
-            # ... (Hata Mesajı Kodu) ...
             hata_mesaji = str(response_or_error)
+            
+            # Detaylı Hata Mesajı
             if "RESOURCE_EXHAUSTED" in hata_mesaji or "context is too long" in hata_mesaji:
                 kullanici_mesaji = "⚠️ Altay'ın hafızası doldu (Token sınırı). Lütfen Kenar Çubuğundan 'Yeni Sohbet Başlat' diyerek geçmişi temizleyin."
             elif "API key" in hata_mesaji or "PERMISSION_DENIED" in hata_mesaji:
@@ -379,24 +356,37 @@ if prompt or (prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
                 
-                # CEVAP OKUMA MANTIĞI (AKICILIK İÇİN STREAM)
+                # YENİ CEVAP OKUMA MANTIĞI (AKICILIK İÇİN STREAM)
                 if hasattr(response_or_error, '__iter__'): 
+                    
+                    # Cevabı yavaş yavaş ekrana bas
                     for chunk in response_or_error:
                         if chunk.text:
                             full_response += chunk.text
+                            # Yanıp sönen imleç hissi verir
                             message_placeholder.markdown(full_response + "▌", unsafe_allow_html=True) 
-                    message_placeholder.markdown(full_response, unsafe_allow_html=True) 
+                    
+                    message_placeholder.markdown(full_response, unsafe_allow_html=True) # Final metni
+                
                 else: 
+                    # Hata yedekleme: Eski yöntemdeki gibi tam cevabı basar
                     try:
                         full_response = response_or_error.text
                     except AttributeError:
                         full_response = "Altay, bir an için duraksadı. Lütfen soruyu tekrarlayın."
+                    
                     message_placeholder.markdown(full_response)
                 
-                # TEXT-TO-SPEECH (TTS) İLE CEVABI SESLENDİRME
+                # YENİ ÖZELLİK: TEXT-TO-SPEECH (TTS) İLE CEVABI SESLENDİRME
                 try:
                     ses_linki = f"https://translate.google.com/translate_tts?ie=UTF-8&tl=tr&client=tw-ob&q={urllib.parse.quote(full_response)}"
-                    st.markdown(f"""<audio autoplay="true" src="{ses_linki}" controls></audio>""", unsafe_allow_html=True)
+                    
+                    st.markdown(
+                        f"""
+                        <audio autoplay="true" src="{ses_linki}" controls></audio>
+                        """,
+                        unsafe_allow_html=True
+                    )
                 except Exception as e:
                     st.warning(f"Seslendirme hatası: Sesli çıktı başlatılamadı.", icon="🎶")
             
