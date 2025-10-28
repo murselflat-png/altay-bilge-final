@@ -78,7 +78,7 @@ def sohbeti_temizle():
 
 # RAG ve Görsel Destekli Altay cevaplama fonksiyonu
 # Buraya 'stream=True' parametresi eklendi (Hata düzeltmesi!)
-def altay_dan_cevap_al(kullanici_mesaji, uploaded_image_parts=None, uploaded_docs=None, model_adi="gemini-2.5-flash", temperature=0.8, stream=True):
+def altay_dan_cevap_al(kullanici_mesaji, uploaded_image_parts=None, uploaded_docs=None, model_adi="gemini-2.5-flash", temperature=0.8, stream=False):
     
     # RAG sistemini güçlendir: Hem sabit hem de dinamik yüklenen dosyaları al
     ozel_bilgi_kaynagi = bilgileri_yukle_ve_hazirla(uploaded_docs=uploaded_docs)
@@ -102,11 +102,11 @@ def altay_dan_cevap_al(kullanici_mesaji, uploaded_image_parts=None, uploaded_doc
     )
     
     try:
+        # Hata veren stream parametresini tamamen KALDIRDIK
         response = client.models.generate_content(
             model=model_adi, 
             contents=contents,
-            config=config,
-            stream=stream # <<< HATA VEREN YER BURAYDI, DÜZELTİLDİ!
+            config=config # Artık stream parametresi YOK
         )
         return response
     
