@@ -208,7 +208,7 @@ st.markdown("""
 with st.sidebar:
     # Profesyonel Logo ve Başlık
     st.markdown(
-        "<div class='altay-title'>⭐ ALTAY Bilge Rehber</div>",
+        "<div class='altay-title'>⭐ ALTAY Yapay Zeka</div>",
         unsafe_allow_html=True
     )
     
@@ -217,7 +217,7 @@ with st.sidebar:
         st.rerun()
             
     st.markdown("---")
-   st.header("Altay'ın Güç Kaynağı")
+    st.header("Altay'ın Güç Kaynağı")
     
     # Model Seçimi (SADECE HIZLI VE ÜCRETSİZ SÜRÜM KALDI)
     st.selectbox(
@@ -228,7 +228,7 @@ with st.sidebar:
     
     # Modeli sabit olarak gemini-2.5-flash'a ayarla
     model_secimi = "gemini-2.5-flash"
-    st.info("Altay, güvenliğiniz için sadece düşük maliyetli ve hızlı Gemini Flash sürümünü kullanıyor.") 
+    st.info("Altay, maliyet güvenliğiniz için sadece düşük maliyetli ve hızlı Gemini Flash sürümünü kullanıyor.") 
     
     # Sıcaklık (Temperature) Ayarı
     sicaklik = st.slider(
@@ -239,6 +239,7 @@ with st.sidebar:
         step=0.1,
         help="0.0 en tutarlı, 1.0 en yaratıcı cevaplar üretir."
     )
+    
     st.markdown("---")
     st.header("Dosya ve Görsel Yükle")
     
