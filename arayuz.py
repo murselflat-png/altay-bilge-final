@@ -217,19 +217,18 @@ with st.sidebar:
         st.rerun()
             
     st.markdown("---")
-    st.header("Altay'ın Güç Kaynağı")
+   st.header("Altay'ın Güç Kaynağı")
     
-    # Model Seçimi
-    model_gosterim = st.selectbox(
+    # Model Seçimi (SADECE HIZLI VE ÜCRETSİZ SÜRÜM KALDI)
+    st.selectbox(
         "Kullanılacak Altay Modeli", 
-        ("Altay-Hızlı", "Altay-Zeki"), 
-        help="Altay-Zeki daha yetenekli ancak Altay-Hızlı daha çabuk yanıt verir."
+        ("Altay-Hızlı (Gemini Flash)",), # Sadece Flash kalacak
+        help="Altay'ın hızlı ve uygun maliyetli standart sürümüdür."
     )
     
-    if "Altay-Zeki" in model_gosterim:
-        model_secimi = "gemini-2.5-pro"
-    else:
-        model_secimi = "gemini-2.5-flash"
+    # Modeli sabit olarak gemini-2.5-flash'a ayarla
+    model_secimi = "gemini-2.5-flash"
+    st.info("Altay, güvenliğiniz için sadece düşük maliyetli ve hızlı Gemini Flash sürümünü kullanıyor.") 
     
     # Sıcaklık (Temperature) Ayarı
     sicaklik = st.slider(
@@ -240,7 +239,6 @@ with st.sidebar:
         step=0.1,
         help="0.0 en tutarlı, 1.0 en yaratıcı cevaplar üretir."
     )
-    
     st.markdown("---")
     st.header("Dosya ve Görsel Yükle")
     
