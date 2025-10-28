@@ -308,19 +308,21 @@ if prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_input"):
         temperature=sicaklik     
     ) 
     
-    # Hata Kontrolü
-    if isinstance(response_or_error, Exception):
-        # Hata mesajı ekranda kalacak!
-        st.error(f"Ulu Tengri'nin yolu kesildi. Bir hata oluştu: {response_or_error}")
-    
-    # 3. Cevabı alırken anlık olarak ekrana bas (Stream)
+   # Hata Kontrolü (Hata yoksa buraya girer)
     elif response_or_error:
         full_response = ""
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
-            for chunk in response_or_error:
-                full_response += chunk.text
-                message_placeholder.markdown(full_response + "▌") # Yazım efekti
+            
+            # CEVAP OKUMA MANTIĞI: (Stream'i kapattığımız için artık tek seferde alırız)
+            try:
+                # Gelen cevabın metin içeriğini doğrudan al
+                full_response = response_or_error.text
+            except AttributeError:
+                # Eğer 'text' bulunamazsa (hata veya boş dönüş)
+                full_response = "Altay, bir an için duraksadı. Lütfen soruyu tekrarlayın."
+            
+            # Cevabı tek seferde ekrana yaz
             message_placeholder.markdown(full_response)
         
         # 4. Oturum geçmişini güncelle
