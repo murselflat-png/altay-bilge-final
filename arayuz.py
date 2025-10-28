@@ -303,27 +303,35 @@ if prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_input"):
         with st.chat_message("user"):
             st.markdown(prompt)
     
-    # 2. Altay'dan cevabı al
-    response_or_error = altay_dan_cevap_al(
-        kullanici_mesaji=prompt, 
-        uploaded_image_parts=gorsel_parcalari, 
-        uploaded_docs=uploaded_docs,
-        model_adi=model_secimi, 
-        temperature=sicaklik     
-    ) 
-    
-   # Hata Kontrolü
-    if isinstance(response_or_error, Exception):
-        # Hata mesajı ekranda kalacak!
-        st.error(f"Ulu Tengri'nin yolu kesildi. Bir hata oluştu: {response_or_error}")
-    
-    # Cevap varsa (Hata yoksa buraya girer)
-    elif response_or_error:
+    # YÜKLEME GÖSTERGESİNİ BAŞLAT
+    with st.status("Altay şu an size cevap veriyor...", expanded=True) as status:
+        
+        # 2. Altay'dan cevabı al
+        response_or_error = altay_dan_cevap_al(
+            kullanici_mesaji=prompt, 
+            uploaded_image_parts=gorsel_parcalari, 
+            uploaded_docs=uploaded_docs,
+            model_adi=model_secimi, 
+            temperature=sicaklik     
+        ) 
+        
+        # Hata Kontrolü
+        if isinstance(response_or_error, Exception):
+            status.update(label="Hata Oluştu.", state="error", expanded=False)
+            st.error(f"Ulu Tengri'nin yolu kesildi. Bir hata oluştu: {response_or_error}")
+        
+        # Cevap varsa (Hata yoksa buraya girer)
+        elif response_or_error:
+             # İşlem başarılı
+            status.update(label="Bilgiler hazırlandı.", state="complete", expanded=False)
+            
+    # Hata zaten basıldı, şimdi sadece başarılı cevabı işle
+    if not isinstance(response_or_error, Exception) and response_or_error:
         full_response = ""
         with st.chat_message("assistant"):
             message_placeholder = st.empty()
             
-            # CEVAP OKUMA MANTIĞI: (Stream'i kapattığımız için artık tek seferde alırız)
+            # CEVAP OKUMA MANTIĞI (Akışsız)
             try:
                 # Gelen cevabın metin içeriğini doğrudan al
                 full_response = response_or_error.text
