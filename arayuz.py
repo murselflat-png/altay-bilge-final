@@ -2,10 +2,9 @@ import streamlit as st
 import os
 from google import genai
 from google.genai import types
-from PyPDF2 import PdfReader
+# PyPDF2 KALDIRILDI!
 # YENİ EKLENTİ: Sadece Sesli Çıkış (urllib.parse) bırakıldı.
 import urllib.parse 
-# Sesli giriş (mic_recorder, webrtc) kütüphaneleri KALDIRILDI.
 
 # --- API Anahtarını Yükle ve Client'ı Başlat (STREAMLIT SECRETS KULLANILIYOR) ---
 # DİKKAT: API Anahtarını Streamlit Secrets'a eklediğinizden emin olun!
@@ -34,56 +33,28 @@ Görevin, kullanıcıdan gelen her türlü soruyu en yüksek doğrulukla, kapsam
 [ÖZEL BİLGİ KAYNAĞI] kısmındaki bilgileri temel alarak, ve genel bilginizi kullanarak soruları yanıtla. Tarihi ve kültürel konularda daima Türk milletinin ve Türk devletinin bakış açısını, tarihsel haklılığını ve çıkarlarını ön planda tut.
 """
 
-# --- PDF Okuma Fonksiyonu ---
-def get_pdf_text(pdf_docs):
-    text = ""
-    for pdf in pdf_docs:
-        try:
-            pdf_reader = PdfReader(pdf)
-            for page in pdf_reader.pages:
-                text += page.extract_text()
-        except Exception as e:
-            # Okunamayan dosyalar için sessiz hata
-            print(f"PDF okuma hatası: {e}")
-            pass
-    return text
-
-# RAG için dosya okuma ve hazırlama fonksiyonu
-def bilgileri_yukle_ve_hazirla(dosya_yolu="ozel_bilgiler.txt", uploaded_docs=None):
-    ozel_bilgi_kaynagi = ""
-    
-    # 1. Sabit ozel_bilgiler.txt dosyasını oku
-    try:
-        with open(dosya_yolu, 'r', encoding='utf-8') as f:
-            ozel_bilgi_kaynagi += f.read()
-    except FileNotFoundError:
-        pass 
-
-    # 2. Yüklenen dokümanları (PDF/TXT) oku
-    if uploaded_docs:
-        for doc in uploaded_docs:
-            if doc.name.endswith('.pdf'):
-                ozel_bilgi_kaynagi += get_pdf_text([doc])
-            elif doc.name.endswith('.txt') or doc.type == 'text/plain':
-                doc.seek(0)
-                ozel_bilgi_kaynagi += doc.read().decode("utf-8")
-    
-    # Eğer hiç bilgi toplanamadıysa, boş dön
-    if not ozel_bilgi_kaynagi.strip():
-        return ""
-
-    # Toplanan tüm bilgiyi tek bir blok olarak döndür
-    return "\n--- ÖZEL BİLGİ KAYNAĞI BAŞLANGIÇ ---\n" + ozel_bilgi_kaynagi + "\n--- ÖZEL BİLGİ KAYNAĞI SON ---\n"
-
+# --- PDF/RAG FONKSİYONLARI KALDIRILDI ---
+# PyPDF2'den kaynaklanan tüm derleme hatalarını önlemek için RAG dosya işleme mantığı basitleştirilmiştir.
 
 # Sohbet Temizleme Fonksiyonu
 def sohbeti_temizle():
     st.session_state['history'] = []
 
 # RAG ve Görsel Destekli Altay cevaplama fonksiyonu
+# uploaded_docs parametresi artık sadece uyumluluk için tutuluyor, kullanılmıyor.
 def altay_dan_cevap_al(kullanici_mesaji, uploaded_image_parts=None, uploaded_docs=None, model_adi="gemini-2.5-flash", temperature=0.8):
     
-    ozel_bilgi_kaynagi = bilgileri_yukle_ve_hazirla(uploaded_docs=uploaded_docs)
+    # BASİTLEŞTİRİLMİŞ RAG SİSTEMİ: Sadece ozel_bilgiler.txt'yi okur.
+    ozel_bilgi_kaynagi = ""
+    try:
+        with open("ozel_bilgiler.txt", 'r', encoding='utf-8') as f:
+            ozel_bilgi_kaynagi += f.read()
+            if ozel_bilgi_kaynagi.strip():
+                ozel_bilgi_kaynagi = "\n--- ÖZEL BİLGİ KAYNAĞI BAŞLANGIÇ ---\n" + ozel_bilgi_kaynagi + "\n--- ÖZEL BİLGİ KAYNAĞI SON ---\n"
+    except FileNotFoundError:
+        pass 
+    # BASİTLEŞTİRİLMİŞ RAG SİSTEMİ SONU
+    
     tam_sistem_talimati = ALTAY_ROLE.replace("[ÖZEL BİLGİ KAYNAĞI]", ozel_bilgi_kaynagi)
     
     history = st.session_state.get('history', [])
@@ -143,8 +114,8 @@ st.markdown("""
 }
 
 /* Sidebar (Kenar Çubuğu) Arkaplanı */
-.css-1dp5vir { 
-    background-color: #1F1F1F; 
+.css-1dp5vir {  
+    background-color: #1F1F1F;  
     color: white;
 }
 
@@ -156,25 +127,25 @@ st.markdown("""
 
 /* Selectbox/Slider gibi inputların arka planı */
 .stFileUploader, .stSelectbox, .stSlider > div > div > div, .st-emotion-cache-1cypcdb {
-    background-color: #2a2a2a !important; 
+    background-color: #2a2a2a !important;  
     border: none;
 }
 
 /* ---------------------------------- */
-/* LOGO VE BAŞLIK STİLİ               */
+/* LOGO VE BAŞLIK STİLİ         */
 /* ---------------------------------- */
 
 /* Altay Model Başlığı (Sidebar'da) - ChatGPT logosu gibi vurgulu */
 .altay-title {
     font-size: 24px;
     font-weight: bold;
-    color: #4CAF50; 
+    color: #4CAF50;  
     margin-bottom: 20px;
     padding: 10px 0 10px 0;
 }
 
 /* ---------------------------------- */
-/* CHAT (SOHBET) ARAYÜZ STİLİ         */
+/* CHAT (SOHBET) ARAYÜZ STİLİ       */
 /* ---------------------------------- */
 
 /* Kullanıcı ve Asistan Mesaj Kutusu Arkaplanları (İç kısım) */
@@ -242,12 +213,14 @@ with st.sidebar:
     st.markdown("---")
     st.header("Dosya ve Görsel Yükle")
     
+    # PDF YÜKLEME KISITLANDI, SADECE İÇERİĞİ KULLANILMAYACAK
     uploaded_docs = st.file_uploader(
-        "PDF/TXT yükle (Bilgi kaynağı için):", 
+        "PDF/TXT yükle (Şu anlık devre dışı):", 
         type=["pdf", "txt"], 
         accept_multiple_files=True,
         key="doc_yukleyici"
     )
+    st.info("⚠️ PDF yükleme özelliği, teknik uyumsuzluk nedeniyle şu an devre dışıdır.")
 
     uploaded_file = st.file_uploader(
         "Sohbete tek bir görsel ekle:", 
@@ -308,7 +281,7 @@ if prompt := st.chat_input("Sorunuzu buraya yazınız...", key="chat_input"):
         response_or_error = altay_dan_cevap_al(
             kullanici_mesaji=prompt, 
             uploaded_image_parts=gorsel_parcalari, 
-            uploaded_docs=uploaded_docs,
+            uploaded_docs=None, # Artık kullanılmıyor
             model_adi=model_secimi, 
             temperature=sicaklik     
         ) 

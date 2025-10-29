@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='utf8'?>
+<nuitka-compilation-report nuitka_version="2.8.4" nuitka_commercial_version="not installed" mode="app" completion="error exit message (1)" exit_message="anti-bloat: Making changes to 'streamlit.runtime.caching.cache_utils' that cause SyntaxError 'invalid syntax. Maybe you meant '==' or ':=' instead of '='? (cache_utils.py, line 514)'">
+  <performance>
+    <memory_usage name="after_launch" value="65814528" />
+  </performance>
+  <data_composer blob_size="None" />
+  <command_line>
+    <option value="--standalone" />
+    <option value="--macos-create-app-bundle" />
+    <option value="--include-package=streamlit" />
+    <option value="--include-package=streamlit_extras" />
+    <option value="--include-package=watchdog" />
+    <option value="--macos-app-name=Altay Bilge Rehber" />
+    <option value="arayuz.py" />
+  </command_line>
+  <plugins>
+    <plugin name="anti-bloat" user_enabled="no" />
+    <plugin name="data-files" user_enabled="no" />
+    <plugin name="delvewheel" user_enabled="no" />
+    <plugin name="dll-files" user_enabled="no" />
+    <plugin name="eventlet" user_enabled="no" />
+    <plugin name="gevent" user_enabled="no" />
+    <plugin name="gi" user_enabled="no" />
+    <plugin name="glfw" user_enabled="no" />
+    <plugin name="implicit-imports" user_enabled="no" />
+    <plugin name="kivy" user_enabled="no" />
+    <plugin name="matplotlib" user_enabled="no" />
+    <plugin name="multiprocessing" user_enabled="no" />
+    <plugin name="options-nanny" user_enabled="no" />
+    <plugin name="pbr-compat" user_enabled="no" />
+    <plugin name="pkg-resources" user_enabled="no" />
+    <plugin name="playwright" user_enabled="no" />
+    <plugin name="pywebview" user_enabled="no" />
+    <plugin name="spacy" user_enabled="no" />
+    <plugin name="transformers" user_enabled="no" />
+  </plugins>
+  <distributions />
+  <python python_exe="${sys.prefix}/bin/python" python_flavor="Anaconda Python" python_version="3.11.14" os_name="Darwin" os_release="26.0.1" arch_name="arm64" filesystem_encoding="utf-8">
+    <search_path>
+      <path value="${cwd}" />
+      <path value="${sys.prefix}/lib/python3.11" />
+      <path value="${sys.prefix}/lib/python3.11/lib-dynload" />
+      <path value="${sys.prefix}/lib/python3.11/site-packages" />
+      <path value="${sys.prefix}/lib/python3.11/site-packages/setuptools/_vendor" />
+    </search_path>
+  </python>
+  <output run_filename="${cwd}/arayuz.app/Contents/MacOS/arayuz" />
+</nuitka-compilation-report>
